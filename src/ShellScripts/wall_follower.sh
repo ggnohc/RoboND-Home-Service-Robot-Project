@@ -3,6 +3,6 @@ xterm -e " cd /home/workspace/catkin_ws; catkin_make; source devel/setup.bash; r
 sleep 5
 xterm -e "roslaunch gmapping.launch" &   #where do i get the gmapping.launch
 sleep 5
-xterm -e " cd /home/workspace/catkin_ws; catkin_make; source devel/setup.bash; roslaunch turtlebot_rviz_launchers view_navigation.launch" &
+xterm -e " cd /home/workspace/catkin_ws; source devel/setup.bash; roslaunch turtlebot_rviz_launchers view_navigation.launch" &
 sleep 5
-xterm -e " rosrun wall_follower wall_follower" &
+xterm -e " cd /home/workspace/catkin_ws; source devel/setup.bash; rosrun wall_follower wall_follower" &
