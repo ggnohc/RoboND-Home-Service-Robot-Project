@@ -2,10 +2,10 @@
 #include <visualization_msgs/Marker.h>
 #include <nav_msgs/Odometry.h>
 
-const float initial_x = -1.7;
-const float initial_y = -0.5;
-const float goal_x = 5.1;
-const float goal_y = 1.5;
+const float initial_x = 4.0;
+const float initial_y = 0.9;
+const float goal_x = -4.0;
+const float goal_y = 7.0;
 
 enum goalState {
     TOWARDS_GOAL = 0,
