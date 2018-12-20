@@ -1,145 +1,136 @@
 #include <ros/ros.h>
 #include <visualization_msgs/Marker.h>
-#include <nav_msgs/Odometry.h>
+#include "nav_msgs/Odometry.h"
+#include <tf/tf.h>
+#include <math.h>
 
-const float initial_x = 4.0;
-const float initial_y = 0.0;
-const float goal_x = -4.0;
-const float goal_y = 7.0;
+float odom_x = 0.0, odom_y = 0.0;
 
-enum goalState {
-    TOWARDS_GOAL = 0,
-    AT_GOAL,
-    TOWARDS_INITIAL,
-    AT_INITIAL
-};
-
-goalState state = TOWARDS_GOAL;
-
-visualization_msgs::Marker init_marker() {
-    visualization_msgs::Marker marker;
-    marker.header.frame_id = "/map";
-    marker.header.stamp = ros::Time::now();
-
-    marker.ns = "add_markers";
-    marker.id = 0;
-
-    uint32_t shape = visualization_msgs::Marker::CYLINDER;
-    marker.type = shape;
-
-    marker.action = visualization_msgs::Marker::ADD;
-
-    marker.pose.position.x = goal_x;
-    marker.pose.position.y = goal_y;
-    marker.pose.position.z = 0;
-    marker.pose.orientation.x = 0.0;
-    marker.pose.orientation.y = 0.0;
-    marker.pose.orientation.z = 0.0;
-    marker.pose.orientation.w = 1.0;
-
-    marker.scale.x = 0.08;
-    marker.scale.y = 0.08;
-    marker.scale.z = 0.23;
-
-    marker.color.r = 1.0f;
-    marker.color.g = 0.0f;
-    marker.color.b = 0.0f;
-    marker.color.a = 1.0;
-
-    marker.lifetime = ros::Duration();
-
-    return marker;
-}
-
-
-void odomCallback(const nav_msgs::Odometry::ConstPtr& odom)
+void odomCallback(const nav_msgs::Odometry::ConstPtr& msg)
 {
-    // ROS_INFO("I received odom: [%f,%f]", odom->pose.pose.position.y, odom->pose.pose.position.x); //store x,y,z position values
-
-    float curPoseX = odom->pose.pose.position.x;
-    float curPoseY = odom->pose.pose.position.y;
-    if ( state == TOWARDS_GOAL &&
-            ( curPoseX <= goal_x + 0.2 && curPoseX >= goal_x - 0.2 ) &&
-            ( curPoseY <= goal_y + 0.2 && curPoseY >= goal_y - 0.2 )
-       ) {
-        state = AT_GOAL;
-        ROS_WARN("arrived at goal position [%f, %f]", curPoseX, curPoseY);
-    }
-
-    if ( state == TOWARDS_INITIAL &&
-            ( curPoseX <= initial_x + 0.2 && curPoseX >= initial_x - 0.2 ) &&
-            ( curPoseY <= initial_y + 0.2 && curPoseY >= initial_y - 0.2 )
-       ) {
-        state = AT_INITIAL;
-        ROS_WARN("arrived at dropoff position [%f, %f]", curPoseX, curPoseY);
-    }
+  ::odom_x = msg->pose.pose.position.x;
+  ::odom_y = msg->pose.pose.position.y;
 }
+
 
 int main( int argc, char** argv )
 {
-    ros::init(argc, argv, "add_markers");
-    ros::NodeHandle n;
-    ros::Rate r(1);
-    ros::Publisher marker_pub = n.advertise<visualization_msgs::Marker>("visualization_marker", 1);
-    ros::Subscriber odom_sub = n.subscribe("/odom", 100, odomCallback);
+  ros::init(argc, argv, "add_markers");
+  ros::NodeHandle n;
+  ros::Rate r(20);
+  ros::Subscriber obom_sub = n.subscribe("/odom", 1000, odomCallback);
+  ros::Publisher marker_pub = n.advertise<visualization_msgs::Marker>("visualization_marker", 1);
+
+  // Set our initial shape type to be a cube
+  uint32_t shape = visualization_msgs::Marker::SPHERE;
+  float goals[2][3] = { {4.0, 0.0, 0.0}, {-4.0, 0.0, 0.0}  };
+
+  bool have_thing = false;
+  visualization_msgs::Marker marker;
+  // Set the frame ID and timestamp.  See the TF tutorials for information on these.
+  marker.header.frame_id = "map";
+  marker.header.stamp = ros::Time::now();
+
+  // Set the namespace and id for this marker.  This serves to create a unique ID
+  // Any marker sent with the same namespace and id will overwrite the old one
+  marker.ns = "add_markers";
+  marker.id = 0;
+
+  // Set the marker type.  Initially this is CUBE, and cycles between that and SPHERE, ARROW, and CYLINDER
+  marker.type = shape;
+
+  // Set the marker action.  Options are ADD, DELETE, and new in ROS Indigo: 3 (DELETEALL)
+  marker.action = visualization_msgs::Marker::ADD;
+
+  // Set the pose of the marker.  This is a full 6DOF pose relative to the frame/time specified in the header
+  marker.pose.position.x = goals[0][0];
+  marker.pose.position.y = goals[0][1];
+  marker.pose.position.z = 0.5;
+  marker.pose.orientation = tf::createQuaternionMsgFromYaw(goals[0][2]);
 
 
-    visualization_msgs::Marker marker = init_marker();
+  // Set the scale of the marker -- 1x1x1 here means 1m on a side
+  marker.scale.x = 1.0;
+  marker.scale.y = 1.0;
+  marker.scale.z = 1.0;
 
-    while (ros::ok())
+  // Set the color -- be sure to set alpha to something non-zero!
+  marker.color.r = 0.0f;
+  marker.color.g = 0.0f;
+  marker.color.b = 1.0f;
+  marker.color.a = 1.0;
+
+  marker.lifetime = ros::Duration();
+
+  while (ros::ok())
+  {
+
+
+    // Publish the marker
+    while (marker_pub.getNumSubscribers() < 1)
     {
+      if (!ros::ok())
+      {
+        return 0;
+      }
+      ROS_WARN_ONCE("Please create a subscriber to the marker");
+      sleep(1);
+    }
 
-        while ( marker_pub.getNumSubscribers() < 1 )
-        {
-            if (!ros::ok())
-            {
-                return 0;
-            }
-            ROS_WARN_ONCE("Please create a subscriber to the marker");
-            sleep(1);
-        }
 
-        ROS_WARN_ONCE("Successfully found a subscriber");
 
-        ros::spinOnce();
 
-        switch (state) {
-        case TOWARDS_GOAL:
-        {
-            // Do nothing
-            break;
-        }
-        case AT_GOAL:
-        {
-            marker.color.a = 0.0;
-            marker.pose.position.x = initial_x;
-            marker.pose.position.y = initial_y;
-            marker_pub.publish(marker);
-            sleep(5);
-            state = TOWARDS_INITIAL;
-            ROS_ERROR("removing marker");
-            break;
-        }
-        case TOWARDS_INITIAL:
-        {
-            marker.color.a = 1.0;
-            break;
-        }
-        case AT_INITIAL:
-        {
-            marker.color.a = 0.0;
+    float x_distance, y_distance;
 
-            break;
-        }
-        default:
-        {
-            break;
-        }
-        }
+    float tolerance = 0.15;
+    //ROS_INFO("Odom data: %f, %f", odom_x, odom_y);
 
+      if (!have_thing)
+      {
         marker_pub.publish(marker);
+        x_distance = fabs(marker.pose.position.x - odom_x);
+        y_distance = fabs(marker.pose.position.y - odom_y);
 
-        r.sleep();
+        if( (x_distance < tolerance) && (y_distance < tolerance) )
+        {
+          marker.action = visualization_msgs::Marker::DELETE;
+          marker_pub.publish(marker);
+
+
+
+
+
+          have_thing = true;
+        }
+
+      }
+      else
+      {
+        x_distance = fabs(goals[1][0] - odom_x);
+        y_distance = fabs(goals[1][1] - odom_y);
+
+        if( (x_distance < tolerance) && (y_distance < tolerance) )
+        {
+          marker.action = visualization_msgs::Marker::ADD;
+          marker.pose.position.x = goals[1][0];
+          marker.pose.position.y = goals[1][1];
+          marker.pose.position.z = 0.5;
+          marker.pose.orientation = tf::createQuaternionMsgFromYaw(goals[1][2]);
+
+
+
+          marker_pub.publish(marker);
+
+        }
+      }
+
+    ros::spinOnce();
+
+
+
+
+    r.sleep();
 
     }
+    return 0;
 }
