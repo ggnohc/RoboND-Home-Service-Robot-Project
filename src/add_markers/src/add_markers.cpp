@@ -54,7 +54,7 @@ visualization_msgs::Marker init_marker() {
 
 void odomCallback(const nav_msgs::Odometry::ConstPtr& odom)
 {
-    ROS_INFO("I received odom: [%f,%f]", odom->pose.pose.position.y, odom->pose.pose.position.x); //store x,y,z position values
+    //ROS_INFO("I received odom: [%f,%f]", odom->pose.pose.position.y, odom->pose.pose.position.x); //store x,y,z position values
 
     float curPoseX = odom->pose.pose.position.x;
     float curPoseY = odom->pose.pose.position.y;
